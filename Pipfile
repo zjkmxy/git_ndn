@@ -1,0 +1,16 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pytest = "*"
+pytest-cov = "*"
+flake8 = "*"
+
+[packages]
+gitpython = "*"
+python-ndn = {editable = true,git = "ssh://git@github.com/zjkmxy/python-ndn",ref = "schema"}
+
+[requires]
+python_version = "3.8"
