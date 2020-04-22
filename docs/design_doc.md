@@ -79,6 +79,7 @@ AccountConfig
 - `KEY/<key-id>.cert`
 A file holding an NDN certificate.
 Key name should be `[PREFIX]/users/<uid>/KEY/<key-id>`
+`<key-id>` should be eocnded by hex.
 
 - `KEY/<key-id>.revoke.tlv`
 Only exists when a key is revoked.
@@ -226,8 +227,12 @@ unsolved can be (true, false). A thread is decided by the last post.
   - Should be accessible under `[PREFIX]/project/<PID>/objects/<changes-hash>/<seg=i>`.
 
 ### When receiving a Sync Interest
-- Fetch missing commits, recording but not fetching files.
-- TBD
+1. Cache new commits into local storage, like `/local`.
+2. Fetch objects into local branches starting with `refs/local`.
+3. Security check.
+4. Merge into target branch.
+
+Details: TBD
 
 ## Git Remote Helper
 I realized this is not limited to NDN protocol.

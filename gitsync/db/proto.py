@@ -94,6 +94,10 @@ class Comment(TlvModel):
     unsolved = BoolField(0xae)
 
 
+class Catalog(TlvModel):
+    entries = RepeatedField(BytesField(0xaf))
+
+
 class GitObject(TlvModel):
     _signer = ProcedureArgument()
     _sig_cover_part = ProcedureArgument()
@@ -109,6 +113,7 @@ class GitObject(TlvModel):
     change_meta = ModelField(0xf5, ChangeMeta)
     vote = ModelField(0xf6, Vote)
     comment = ModelField(0xf7, Comment)
+    catalog = ModelField(0xf8, Catalog)
 
     signature_info = ModelField(0xe0, SignatureInfo)
     signature_value = SignatureValueField(0xe1,
@@ -137,6 +142,8 @@ def encode(obj: TlvModel, signer: Optional[Signer] = None) -> bytes:
         git_obj.vote = obj
     elif isinstance(obj, Comment):
         git_obj.comment = obj
+    elif isinstance(obj, Catalog):
+        git_obj.catalog = obj
     else:
         raise ValueError(f'Unrecognized object: {obj}')
 
@@ -152,7 +159,7 @@ def encode(obj: TlvModel, signer: Optional[Signer] = None) -> bytes:
 
 def parse(wire: BinaryStr) -> Tuple[TlvModel, SignaturePtrs]:
     markers = {}
-    git_obj = GitObject.parse(wire, {})
+    git_obj = GitObject.parse(wire, {}, ignore_critical=True)
     sig_ptrs = SignaturePtrs(
         signature_info=git_obj.signature_info,
         signature_covered_part=git_obj._sig_cover_part.get_arg(markers),
@@ -175,6 +182,8 @@ def parse(wire: BinaryStr) -> Tuple[TlvModel, SignaturePtrs]:
         ret = git_obj.vote
     elif git_obj.comment is not None:
         ret = git_obj.comment
+    elif git_obj.catalog is not None:
+        ret = git_obj.catalog
     else:
         raise ValueError(f'The object parsed is empty')
 

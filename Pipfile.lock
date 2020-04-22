@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "8a4863483ac0572c07709ca5cc4f011726706f6b7eaf64bbc609685366c95021"
+            "sha256": "f06bd4c7b0fa5c1db19952b823e00c45a79bdb822a5247b430d0f1eeff0f7e40"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -79,10 +79,18 @@
             ],
             "version": "==2.3.3"
         },
+        "python-dotenv": {
+            "hashes": [
+                "sha256:25c0ff1a3e12f4bde8d592cc254ab075cfe734fc5dd989036716fd17ee7e5ec7",
+                "sha256:3b9909bc96b0edc6b01586e1eed05e71174ef4e04c71da5786370cebea53ad74"
+            ],
+            "index": "pypi",
+            "version": "==0.13.0"
+        },
         "python-ndn": {
             "editable": true,
             "git": "ssh://git@github.com/zjkmxy/python-ndn",
-            "ref": "dee089502efcd20f41d311e3d8e5f130c9b54cb0"
+            "ref": "e850b0cfecb1825a5ec97cb9af079c407f8f20ec"
         },
         "smmap": {
             "hashes": [
