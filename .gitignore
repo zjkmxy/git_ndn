@@ -119,3 +119,5 @@ checkpoint
 # pytest
 .pytest_cache
 
+# Temporary code file
+temp.py

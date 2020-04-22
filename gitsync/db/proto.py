@@ -33,7 +33,7 @@ class LabelValue(TlvModel):
 class LabelConfig(TlvModel):
     label = BytesField(0x98)
     function = UintField(0x99)
-    default_value = BytesField(0x9a)
+    default_value = UintField(0x9a)
     values = RepeatedField(ModelField(0x9b, LabelValue))
 
 
@@ -55,7 +55,7 @@ class AccountConfig(TlvModel):
 class KeyRevocation(TlvModel):
     key_id = BytesField(0x83)
     revoke_time = BytesField(0xa4)
-    current_heads = RepeatedField(BytesField(0xa5))
+    # current_heads = RepeatedField(BytesField(0xa5))
 
 
 class GroupConfig(TlvModel):
