@@ -154,8 +154,10 @@ def encode(obj: TlvModel, signer: Optional[Signer] = None) -> bytes:
     ret = git_obj.encode(markers=markers)
     GitObject.signature_value.calculate_signature(markers)
     shrink_size = git_obj._shrink_len.get_arg(markers)
-    return bytes(ret[:-shrink_size])
-
+    if shrink_size != 0:
+        return bytes(ret[:-shrink_size])
+    else:
+        return bytes(ret)
 
 def parse(wire: BinaryStr) -> Tuple[TlvModel, SignaturePtrs]:
     markers = {}
