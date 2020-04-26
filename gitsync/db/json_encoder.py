@@ -62,9 +62,67 @@ class GitObjectEncoder(json.JSONEncoder):
             return super(self).default(obj)
 
 
+class GitObjectDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        super().__init__(object_hook=self._object_hook, *args, **kwargs)
+
+    def _decode_field(self, field_name: str, val):
+        # decode a dict into a single TLV field top-down
+        print('_decode_field() called: ', type(val), val)
+        if isinstance(val, int):
+            if field_name in ['value', 'min_value', 'max_value', 'default_value']:
+                return val + 128
+            else:
+                return val
+        elif isinstance(val, str):
+            if field_name == 'key_id':
+                return bytes.fromhex(val)
+            else:
+                return val.encode('utf-8')
+        elif isinstance(val, list):
+            return list(self._decode_field(None, x) for x in val)
+    
+    def _decode_model(self, modelType: type, dct):
+        ret = modelType()
+        for field in ret._encoded_fields:
+            if field.name in dct:
+                setattr(ret, field.name, self._decode_field(field.name, dct[field.name]))
+        return ret
+
+    def _object_hook(self, dct):
+        print('_object_hook() called: ', dct)
+        # if has object_type field, construct GitObject
+        if 'object_type' in dct:
+            typ = None
+            object_type = dct['object_type']
+            if object_type == 'project_config':
+                typ = proto.ProjectConfig
+            elif object_type == 'account_config':
+                typ = proto.AccountConfig
+            elif object_type == 'key_revocation':
+                typ = proto.KeyRevocation
+            elif object_type == 'group_config':
+                typ = proto.GroupConfig
+            elif object_type == 'head_ref':
+                typ = proto.HeadRef
+            elif object_type == 'change_meta':
+                typ = proto.ChangeMeta
+            elif object_type == 'vote':
+                typ = proto.Vote
+            elif object_type == 'comment':
+                typ = proto.Comment
+            elif object_type == 'catalog':
+                typ = proto.Catalog
+            ret = proto.GitObject()
+            setattr(ret, object_type, self._decode_model(typ, dct['value']))
+            return ret
+        else:
+            return dct
+
+
 def json_encode(obj: proto.GitObject) -> str:
     return json.dumps(obj, indent=2, cls=GitObjectEncoder)
 
 
 def json_decode(text: str) -> proto.GitObject:
-    pass
+    return json.loads(text, cls=GitObjectDecoder)
