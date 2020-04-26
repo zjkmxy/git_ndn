@@ -68,8 +68,9 @@ class GitObjectDecoder(json.JSONDecoder):
 
     def _decode_field(self, field_name: str, val):
         # decode a dict into a single TLV field top-down
-        print('_decode_field() called: ', type(val), val)
-        if isinstance(val, int):
+        if isinstance(val, bool):
+            return val
+        elif isinstance(val, int):
             if field_name in ['value', 'min_value', 'max_value', 'default_value']:
                 return val + 128
             else:
@@ -90,7 +91,6 @@ class GitObjectDecoder(json.JSONDecoder):
         return ret
 
     def _object_hook(self, dct):
-        print('_object_hook() called: ', dct)
         # if has object_type field, construct GitObject
         if 'object_type' in dct:
             typ = None
