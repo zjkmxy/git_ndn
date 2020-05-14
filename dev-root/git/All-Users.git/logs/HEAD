@@ -1,0 +1,18 @@
+0000000000000000000000000000000000000000 59e075231bde68fd0e8dcedc34d4d3bcd7dc5e75 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589435449 -0700	commit (initial): init
+59e075231bde68fd0e8dcedc34d4d3bcd7dc5e75 59e075231bde68fd0e8dcedc34d4d3bcd7dc5e75 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589435629 -0700	checkout: moving from refs/users/ad/ada to refs/users/ad/admin
+59e075231bde68fd0e8dcedc34d4d3bcd7dc5e75 4efbe57375fe7eb38629a219a4959c049dbdfd27 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589435711 -0700	commit (amend): init
+4efbe57375fe7eb38629a219a4959c049dbdfd27 4efbe57375fe7eb38629a219a4959c049dbdfd27 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589435789 -0700	checkout: moving from refs/users/ad/admin to refs/users/ba/basic
+4efbe57375fe7eb38629a219a4959c049dbdfd27 7efb0d29913df60a2d8afc9477d0a93ad190f9ae Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589435866 -0700	commit (amend): init
+7efb0d29913df60a2d8afc9477d0a93ad190f9ae 04680e0eb92fbc061ec848690e330cfa97eee8a0 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589436286 -0700	commit (amend): init
+04680e0eb92fbc061ec848690e330cfa97eee8a0 04680e0eb92fbc061ec848690e330cfa97eee8a0 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589436322 -0700	checkout: moving from refs/users/ba/basic to refs/meta/config
+04680e0eb92fbc061ec848690e330cfa97eee8a0 04680e0eb92fbc061ec848690e330cfa97eee8a0 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589437005 -0700	checkout: moving from refs/meta/config to refs/heads/refs/users/ba/basic
+04680e0eb92fbc061ec848690e330cfa97eee8a0 04680e0eb92fbc061ec848690e330cfa97eee8a0 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589437016 -0700	checkout: moving from 04680e0eb92fbc061ec848690e330cfa97eee8a0 to refs/users/ba/basic
+04680e0eb92fbc061ec848690e330cfa97eee8a0 45ae2e778d9d4f622e0ea1225ee94e7ca4c4b12d Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589437081 -0700	commit (amend): init
+45ae2e778d9d4f622e0ea1225ee94e7ca4c4b12d 04680e0eb92fbc061ec848690e330cfa97eee8a0 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589437200 -0700	checkout: moving from refs/users/ba/basic to refs/meta/config
+04680e0eb92fbc061ec848690e330cfa97eee8a0 04680e0eb92fbc061ec848690e330cfa97eee8a0 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589437212 -0700	checkout: moving from refs/meta/config to refs/heads/refs/meta/config
+04680e0eb92fbc061ec848690e330cfa97eee8a0 04680e0eb92fbc061ec848690e330cfa97eee8a0 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589437224 -0700	checkout: moving from 04680e0eb92fbc061ec848690e330cfa97eee8a0 to refs/meta/config
+04680e0eb92fbc061ec848690e330cfa97eee8a0 025c7a52956959e48f3cb52eb3f3e767a94a4de4 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589438738 -0700	commit (amend): init
+025c7a52956959e48f3cb52eb3f3e767a94a4de4 025c7a52956959e48f3cb52eb3f3e767a94a4de4 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589440030 -0700	checkout: moving from refs/meta/config to master
+025c7a52956959e48f3cb52eb3f3e767a94a4de4 b3dd916d1624fadb722a5b082a4af707bdb4a262 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589440466 -0700	commit (amend): init
+b3dd916d1624fadb722a5b082a4af707bdb4a262 3e9cd90ce91774ca636ef03d48a490178f372cc5 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589440505 -0700	commit (amend): init
+3e9cd90ce91774ca636ef03d48a490178f372cc5 0000000000000000000000000000000000000000 Xinyu Ma <ma.xinyu.26a@kyoto-u.jp> 1589441164 -0700

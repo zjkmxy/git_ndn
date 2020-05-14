@@ -62,7 +62,7 @@ class GroupConfig(TlvModel):
     group_id = BytesField(0x82)
     full_name = BytesField(0xa2)
     owner = BytesField(0xa3)
-    members = BytesField(0xa4)
+    members = RepeatedField(BytesField(0xa4))
 
 
 class HeadRef(TlvModel):
