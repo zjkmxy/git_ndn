@@ -25,7 +25,7 @@ class GitObjectEncoder(json.JSONEncoder):
             if field.name == 'key_id':
                 return val.hex()
             else:
-                return val.decode('utf-8')
+                return bytes(val).decode('utf-8')
         elif isinstance(field, encoding.RepeatedField):
             lst = [self._encode_field(field.element_type, cur) for cur in val]
             return list(x for x in lst if x is not None and x != [])

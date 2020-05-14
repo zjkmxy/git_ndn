@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from ndn.encoding import TlvModel, BytesField, UintField, RepeatedField, ModelField, BoolField,\
     ProcedureArgument, OffsetMarker, SignatureInfo, BinaryStr, Signer, SignaturePtrs
 from ndn.encoding.tlv_model import SignatureValueField
@@ -125,31 +125,37 @@ class GitObject(TlvModel):
 
 
 def encode(obj: TlvModel, signer: Optional[Signer] = None) -> bytes:
-    git_obj = GitObject()
-    if isinstance(obj, ProjectConfig):
-        git_obj.project_config = obj
-    elif isinstance(obj, AccountConfig):
-        git_obj.account_config = obj
-    elif isinstance(obj, KeyRevocation):
-        git_obj.key_revocation = obj
-    elif isinstance(obj, GroupConfig):
-        git_obj.group_config = obj
-    elif isinstance(obj, HeadRef):
-        git_obj.head_ref = obj
-    elif isinstance(obj, ChangeMeta):
-        git_obj.change_meta = obj
-    elif isinstance(obj, Vote):
-        git_obj.vote = obj
-    elif isinstance(obj, Comment):
-        git_obj.comment = obj
-    elif isinstance(obj, Catalog):
-        git_obj.catalog = obj
+    if isinstance(obj, GitObject):
+        git_obj = obj
     else:
-        raise ValueError(f'Unrecognized object: {obj}')
+        git_obj = GitObject()
+        if isinstance(obj, ProjectConfig):
+            git_obj.project_config = obj
+        elif isinstance(obj, AccountConfig):
+            git_obj.account_config = obj
+        elif isinstance(obj, KeyRevocation):
+            git_obj.key_revocation = obj
+        elif isinstance(obj, GroupConfig):
+            git_obj.group_config = obj
+        elif isinstance(obj, HeadRef):
+            git_obj.head_ref = obj
+        elif isinstance(obj, ChangeMeta):
+            git_obj.change_meta = obj
+        elif isinstance(obj, Vote):
+            git_obj.vote = obj
+        elif isinstance(obj, Comment):
+            git_obj.comment = obj
+        elif isinstance(obj, Catalog):
+            git_obj.catalog = obj
+        else:
+            raise ValueError(f'Unrecognized object: {obj}')
 
     if signer is not None:
         git_obj.signature_info = SignatureInfo()
+        signer.write_signature_info(git_obj.signature_info)
     markers = {}
+    git_obj._sig_cover_part.set_arg(markers, [])
+
     git_obj._signer.set_arg(markers, signer)
     ret = git_obj.encode(markers=markers)
     GitObject.signature_value.calculate_signature(markers)
@@ -159,12 +165,20 @@ def encode(obj: TlvModel, signer: Optional[Signer] = None) -> bytes:
     else:
         return bytes(ret)
 
-def parse(wire: BinaryStr) -> Tuple[TlvModel, SignaturePtrs]:
+
+def parse_gitobj(wire: BinaryStr) -> Tuple[GitObject, List]:
     markers = {}
-    git_obj = GitObject.parse(wire, {}, ignore_critical=True)
+    GitObject._sig_cover_part.set_arg(markers, [])
+    obj = GitObject.parse(wire, markers, ignore_critical=True)
+    covered_part = obj._sig_cover_part.get_arg(markers)
+    return obj, covered_part
+
+
+def parse(wire: BinaryStr) -> Tuple[TlvModel, SignaturePtrs]:
+    git_obj, covered_part = parse_gitobj(wire)
     sig_ptrs = SignaturePtrs(
         signature_info=git_obj.signature_info,
-        signature_covered_part=git_obj._sig_cover_part.get_arg(markers),
+        signature_covered_part=covered_part,
         signature_value_buf=git_obj.signature_value,
     )
 

@@ -15,3 +15,7 @@ python-dotenv = "*"
 
 [requires]
 python_version = "3.8"
+
+[scripts]
+tlv_to_json = "python bin/tlv_to_json.py"
+encode_json = "python bin/encode_json.py"
