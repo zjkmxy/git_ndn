@@ -166,21 +166,21 @@ def encode(obj: TlvModel, signer: Optional[Signer] = None) -> bytes:
         return bytes(ret)
 
 
-def parse_gitobj(wire: BinaryStr) -> Tuple[GitObject, List]:
+def parse_gitobj(wire: BinaryStr) -> Tuple[GitObject, SignaturePtrs]:
     markers = {}
     GitObject._sig_cover_part.set_arg(markers, [])
     obj = GitObject.parse(wire, markers, ignore_critical=True)
     covered_part = obj._sig_cover_part.get_arg(markers)
-    return obj, covered_part
+    sig_ptrs = SignaturePtrs(
+        signature_info=obj.signature_info,
+        signature_covered_part=covered_part,
+        signature_value_buf=obj.signature_value,
+    )
+    return obj, sig_ptrs
 
 
 def parse(wire: BinaryStr) -> Tuple[TlvModel, SignaturePtrs]:
-    git_obj, covered_part = parse_gitobj(wire)
-    sig_ptrs = SignaturePtrs(
-        signature_info=git_obj.signature_info,
-        signature_covered_part=covered_part,
-        signature_value_buf=git_obj.signature_value,
-    )
+    git_obj, sig_ptrs = parse_gitobj(wire)
 
     if git_obj.project_config is not None:
         ret = git_obj.project_config
