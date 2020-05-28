@@ -90,7 +90,7 @@
         "python-ndn": {
             "editable": true,
             "git": "ssh://git@github.com/zjkmxy/python-ndn",
-            "ref": "e850b0cfecb1825a5ec97cb9af079c407f8f20ec"
+            "ref": "d9f097078d3a3f8ac309bf9ab1b0402c8a732fdb"
         },
         "smmap": {
             "hashes": [

@@ -10,7 +10,7 @@ class Accounts:
     repos: repos.GitRepos
 
     def __init__(self, git_repos):
-        self.repos = git_repos
+        self.repo = git_repos['All-Users.git']
 
     def verify(self, sig_ptrs: enc.SignaturePtrs) -> bool:
         if (sig_ptrs.signature_info is None
@@ -22,12 +22,10 @@ class Accounts:
         key_name = bytes(enc.Component.get_value(sig_ptrs.signature_info.key_locator.name[-1])).hex()
 
         try:
-            cert = self.repos.read_file('All-Users.git',
-                                        f'refs/users/{user_name[:2]}/{user_name}',
-                                        f'KEY/{key_name}.cert')
+            cert = self.repo.read_file(f'refs/users/{user_name[:2]}/{user_name}',f'KEY/{key_name}.cert')
         except KeyError as e:
             if e.args[0] == 0:
-                logging.warning(f'Repo All-Users.git does not exist')
+                logging.warning(f'Repo {e.args[1]} does not exist')
             if e.args[0] == 1:
                 logging.warning(f'User {user_name} does not exist')
             elif e.args[0] == 2:
