@@ -1,8 +1,8 @@
 import os
 import io
 import typing
-from git import Repo
-from gitdb.base import IStream, OStream
+from git import Repo, Reference, Commit
+from gitdb.base import IStream
 
 
 class GitRepos:
@@ -28,14 +28,14 @@ class GitRepo:
         self.repos = repos
         self.repo_name = repo_name
 
-    def _get_repo(self):
+    def _get_repo(self) -> Repo:
         try:
             return self.repos[self.repo_name]
             # assert repo.bare
         except KeyError:
             raise KeyError(0, self.repo_name)  # Note: Use enum
 
-    def read_file(self, ref_name, file_name) -> bytes:
+    def _get_ref(self, ref_name: str) -> Reference:
         repo = self._get_repo()
         user_ref = None
         for ref in repo.refs:
@@ -44,14 +44,18 @@ class GitRepo:
                 break
         if user_ref is None:
             raise KeyError(1, ref_name)
+        return user_ref
+
+    def read_file(self, ref_name, file_name) -> bytes:
+        user_ref = self._get_ref(ref_name)
 
         try:
             tree = user_ref.commit.tree
-            cert_file = tree[file_name]
+            file = tree[file_name]
         except KeyError:
             raise KeyError(2, file_name)
 
-        return cert_file.data_stream.read()
+        return file.data_stream.read()
 
     # This does not work for big object
     def read_obj(self, obj_name: bytes) -> typing.Tuple[str, bytes]:
@@ -69,3 +73,37 @@ class GitRepo:
         istream = IStream(obj_type, len(data), io.BytesIO(data))
         repo.odb.store(istream)
 
+    def get_head(self, ref_name: str) -> bytes:
+        return self._get_ref(ref_name).binsha
+
+    def set_head(self, ref_name: str, head: bytes) -> Reference:
+        repo = self._get_repo()
+        ref = Reference.create(repo, ref_name, head.hex(), force=True)
+        return ref
+
+    def del_ref(self, ref_name: str):
+        repo = self._get_repo()
+        # No exception will be thrown
+        Reference.delete(repo, ref_name)
+
+    def is_ancestor(self, ancestor: bytes, head: bytes):
+        return self._get_repo().is_ancestor(ancestor.hex(), head.hex())
+
+    def merge_base(self, head1: bytes, head2: bytes) -> Commit:
+        base_list = self._get_repo().merge_base(head1.hex(), head2.hex())
+        if len(base_list) != 1:
+            raise ValueError('Multiple merge bases')
+        else:
+            return base_list[0]
+
+    def list_commits(self, ancestor: bytes, head: bytes):
+        repo = self._get_repo()
+        if ancestor:
+            ret = list(repo.iter_commits(f'{ancestor.hex()}..{head.hex()}'))
+        else:
+            ret = list(repo.iter_commits(f'{head.hex()}'))
+        ret.reverse()
+        return ret
+
+    def get_commit(self, head: bytes) -> Commit:
+        return Commit(self._get_repo(), head)

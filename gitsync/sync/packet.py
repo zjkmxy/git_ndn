@@ -4,3 +4,12 @@ from ndn import encoding as enc
 class SyncObject(enc.TlvModel):
     obj_type = enc.BytesField(0x01)
     obj_data = enc.BytesField(0x02)
+
+
+class RefInfo(enc.TlvModel):
+    ref_name = enc.BytesField(0x03)
+    ref_head = enc.BytesField(0x04)
+
+
+class SyncUpdate(enc.TlvModel):
+    ref_into = enc.RepeatedField(enc.ModelField(0x05, RefInfo))
