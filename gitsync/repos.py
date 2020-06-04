@@ -68,10 +68,11 @@ class GitRepo:
         repo = self._get_repo()
         return repo.odb.has_object(obj_name)
 
-    def store_obj(self, obj_type: bytes, data: bytes):
+    def store_obj(self, obj_type: bytes, data: bytes) -> bytes:
         repo = self._get_repo()
         istream = IStream(obj_type, len(data), io.BytesIO(data))
         repo.odb.store(istream)
+        return istream.binsha
 
     def get_head(self, ref_name: str) -> bytes:
         return self._get_ref(ref_name).binsha

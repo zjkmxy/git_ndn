@@ -8,6 +8,7 @@ from .fetch_queue import ObjectFetcher
 from ..repos import GitRepo
 from ..account.account import Accounts
 from ..db import proto
+from .merger import Merger
 
 
 class RepoSyncPipeline:
@@ -37,14 +38,14 @@ class RepoSyncPipeline:
             except ValueError as e:
                 logging.warning(f'Fetching error - {e}')
                 continue
-            # If this is bmeta, fetch refs/head/*
+            # TODO: If this is bmeta, fetch refs/head/*
             pass
             # Linear update: compare history
             ret = await self.linear_update(name, head)
             # Merge update: for append-only branches
             if not ret and self.is_mergable_branch(name):
                 ret = await self.merge_update(name, head)
-            # If this is bmeta, reset refs/head/*
+            # TODO: If this is bmeta, reset refs/head/*
 
     async def linear_update(self, name: str, new_head: bytes) -> bool:
         # Try to get the original head
@@ -107,9 +108,11 @@ class RepoSyncPipeline:
                 break
             else:
                 last = commit
-        # TODO: If it is mergable, merge
+        # If it is mergable, merge
         if last != ori_commit:
             logging.fatal(f'Not implemented: automerge {last.hexsha} {ori_commit.hexsha}')
+        ret = Merger(self.repo).create_commit(merge_base, ori_commit, new_commit)
+        self.repo.set_head(name, ret)
         return True
 
     async def security_check(self, name: str, commit: Commit) -> bool:
