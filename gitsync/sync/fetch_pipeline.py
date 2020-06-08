@@ -19,6 +19,7 @@ class RepoSyncPipeline:
         self.accounts = accounts
         self.publish_update = None
         self.updated = False
+        self.in_process = False
 
     def on_update(self, data: enc.BinaryStr):
         try:
@@ -31,7 +32,9 @@ class RepoSyncPipeline:
             for ref_info in update.ref_into
         }
         logging.debug(f'On Sync Update {ref_updates}')
-        aio.create_task(self.after_update(ref_updates))
+        if not self.in_process:
+            self.in_process = True
+            aio.create_task(self.after_update(ref_updates))
 
     async def after_update(self, ref_updates: typ.Dict[str, bytes]):
         self.updated = False
@@ -54,6 +57,7 @@ class RepoSyncPipeline:
         # Set Sync update
         if self.updated:
             self.send_sync_update()
+        self.in_process = False
 
     async def linear_update(self, name: str, new_head: bytes) -> bool:
         # Try to get the original head
@@ -69,6 +73,10 @@ class RepoSyncPipeline:
         # Return if cannot set directly
         if ori_head:
             try:
+                # If the current head is newer, stop
+                if self.repo.is_ancestor(new_head, ori_head):
+                    return True
+                # If there is any conflict
                 if not self.repo.is_ancestor(ori_head, new_head):
                     return False
             except GitCommandError as e:
@@ -86,7 +94,7 @@ class RepoSyncPipeline:
             if not await self.security_check(name, commit):
                 break
             else:
-                logging.debug(f'Set head -> {new_head.hex()}')
+                logging.debug(f'Set head -> {commits[i].hexsha}')
                 # We have to write to the disk because new certs may be added here
                 self.repo.set_head(name, commits[i].binsha)
         self.updated = True
@@ -108,6 +116,8 @@ class RepoSyncPipeline:
         except ValueError as e:
             logging.warning(f'No common base for merge {name} {new_head}->{ori_head}: {e}')
             return False
+        if merge_base.binsha == ori_head or merge_base == new_head:
+            logging.fatal(f'Unnecessary merge {ori_head.hex()} -- {new_head.hex()}')
         # Do security check one by one
         # We do not handle certs because it's too difficult
         last = ori_commit
@@ -121,10 +131,9 @@ class RepoSyncPipeline:
                 last = commit
         # If it is mergable, merge
         if last != ori_commit:
-            logging.fatal(f'Not implemented: automerge {last.hexsha} {ori_commit.hexsha}')
-        ret = Merger(self.repo).create_commit(merge_base, ori_commit, new_commit)
-        self.repo.set_head(name, ret)
-        self.updated = True
+            ret = Merger(self.repo).create_commit(merge_base, ori_commit, new_commit)
+            self.repo.set_head(name, ret)
+            self.updated = True
         return True
 
     async def security_check(self, name: str, commit: Commit) -> bool:

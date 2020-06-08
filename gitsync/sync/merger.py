@@ -28,19 +28,19 @@ class Merger:
         # We may assume that either original or new agrees with base on any file
         # Recursively merge
         ret_dict = {}
-        for bname, (btype, bsha) in base_dict:
+        for bname, (btype, bsha) in base_dict.items():
             if bname not in ori_dict or bname not in new_dict:
                 raise ValueError('Merge conflict')
             otype, osha = ori_dict[bname]
-            ntype, nsha = ori_dict[bname]
+            ntype, nsha = new_dict[bname]
             if otype != btype or ntype != btype:
                 raise ValueError('Merge conflict')
             ret_dict[bname] = (btype, self.merge_step(bsha, osha, nsha))
         # Add new files
-        for oname, (otype, osha) in ori_dict:
+        for oname, (otype, osha) in ori_dict.items():
             if oname not in ret_dict:
                 ret_dict[oname] = (otype, osha)
-        for nname, (ntype, nsha) in new_dict:
+        for nname, (ntype, nsha) in new_dict.items():
             if nname not in ret_dict:
                 ret_dict[nname] = (ntype, nsha)
         # Create the tree object and write it
