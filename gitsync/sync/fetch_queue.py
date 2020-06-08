@@ -1,6 +1,7 @@
 import os
 import typing
 import logging
+import asyncio as aio
 from ndn.app import NDNApp
 from ndn.encoding import Name, Component, FormalName, InterestParam, BinaryStr
 from ndn.app_support.segment_fetcher import segment_fetcher
@@ -17,7 +18,7 @@ class ObjectFetcher:
         self.app = app
         self.repo = repo
         self.prefix = Name.from_str(os.getenv("GIT_NDN_PREFIX") + f'/project/{repo.repo_name}/objects')
-        self.app.register(self.prefix, self.on_interest)
+        aio.create_task(self.app.register(self.prefix, self.on_interest))
 
     def close(self):
         self.app.unregister(self.prefix)
@@ -29,20 +30,21 @@ class ObjectFetcher:
         # TODO: If the fetch fails, mark those objects
         # Fetch object
         packet_name = self.prefix + [Component.from_bytes(obj_name)]
-        wire = b''.join(bytes(seg) async for seg in segment_fetcher(self.app, packet_name, must_be_fresh=False))
+        wire = b''.join([bytes(seg) async for seg in segment_fetcher(self.app, packet_name, must_be_fresh=False)])
         pack = SyncObject.parse(wire, ignore_critical=True)
+        fetched_obj_type = bytes(pack.obj_type).decode()
         # Check type
-        if obj_type and obj_type != pack.obj_type:
-            raise ValueError(f'{obj_type} is expected but get {pack.obj_type}')
+        if obj_type and obj_type != fetched_obj_type:
+            raise ValueError(f'{obj_type} is expected but get {fetched_obj_type}')
         # Write into repo TODO: Check name
-        self.repo.store_obj(bytes(pack.obj_type), pack.obj_data)
+        self.repo.store_obj(bytes(pack.obj_type), bytes(pack.obj_data))
         # Trigger recurisve fetching
         if obj_type == "commit":
-            await self.traverse_commit(pack.obj_data)
+            await self.traverse_commit(bytes(pack.obj_data))
         elif obj_type == "tree":
-            await self.traverse_tree(pack.obj_data)
+            await self.traverse_tree(bytes(pack.obj_data))
         elif obj_type != "blob":
-            raise ValueError(b'Unknown data type {obj_type}')
+            raise ValueError(f'Unknown data type {obj_type}')
 
     async def traverse_commit(self, content: bytes):
         lines = content.decode("utf-8").split("\n")

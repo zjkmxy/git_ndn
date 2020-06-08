@@ -3,6 +3,7 @@ import typing as typ
 import asyncio as aio
 from git import GitCommandError, Commit
 from ndn import encoding as enc
+from ndn.types import InterestCanceled, InterestTimeout, InterestNack
 from . import packet
 from .fetch_queue import ObjectFetcher
 from ..repos import GitRepo
@@ -16,6 +17,8 @@ class RepoSyncPipeline:
         self.fetcher = fetcher
         self.repo = repo
         self.accounts = accounts
+        self.publish_update = None
+        self.updated = False
 
     def on_update(self, data: enc.BinaryStr):
         try:
@@ -24,19 +27,21 @@ class RepoSyncPipeline:
             logging.warning(f'Invalid sync update - {e}')
             return
         ref_updates = {
-            ref_info.ref_name.decode(): bytes(ref_info.ref_name)
+            bytes(ref_info.ref_name).decode(): bytes(ref_info.ref_head)
             for ref_info in update.ref_into
         }
+        logging.debug(f'On Sync Update {ref_updates}')
         aio.create_task(self.after_update(ref_updates))
 
     async def after_update(self, ref_updates: typ.Dict[str, bytes]):
+        self.updated = False
         # TODO: Handle refs/changes-hash
         for name, head in ref_updates.items():
             # Fetch the head
             try:
                 await self.fetcher.fetch('commit', head)
-            except ValueError as e:
-                logging.warning(f'Fetching error - {e}')
+            except (ValueError, InterestCanceled, InterestTimeout, InterestNack) as e:
+                logging.warning(f'Fetching error - {type(e)} {e}')
                 continue
             # TODO: If this is bmeta, fetch refs/head/*
             pass
@@ -46,6 +51,9 @@ class RepoSyncPipeline:
             if not ret and self.is_mergable_branch(name):
                 ret = await self.merge_update(name, head)
             # TODO: If this is bmeta, reset refs/head/*
+        # Set Sync update
+        if self.updated:
+            self.send_sync_update()
 
     async def linear_update(self, name: str, new_head: bytes) -> bool:
         # Try to get the original head
@@ -78,8 +86,10 @@ class RepoSyncPipeline:
             if not await self.security_check(name, commit):
                 break
             else:
+                logging.debug(f'Set head -> {new_head.hex()}')
                 # We have to write to the disk because new certs may be added here
                 self.repo.set_head(name, commits[i].binsha)
+        self.updated = True
         return True
 
     async def merge_update(self, name: str, new_head: bytes):
@@ -90,6 +100,7 @@ class RepoSyncPipeline:
         if ori_commit.tree.binsha == new_commit.tree.binsha:
             if ori_head < new_head:
                 self.repo.set_head(name, new_head)
+            self.updated = True
             return True
         # A common base is required (as XxxConfig.tlv is necessary)
         try:
@@ -113,6 +124,7 @@ class RepoSyncPipeline:
             logging.fatal(f'Not implemented: automerge {last.hexsha} {ori_commit.hexsha}')
         ret = Merger(self.repo).create_commit(merge_base, ori_commit, new_commit)
         self.repo.set_head(name, ret)
+        self.updated = True
         return True
 
     async def security_check(self, name: str, commit: Commit) -> bool:
@@ -195,12 +207,13 @@ class RepoSyncPipeline:
     def check_user_branch(self, name: str, commit: Commit) -> bool:
         # AccountConfig.tlv
         wire = commit.tree['account.tlv'].data_stream.read()
-        config = proto.parse(wire)
+        config, _ = proto.parse(wire)
         if not isinstance(config, proto.AccountConfig):
             logging.error(f'File {name}@account.tlv is not of type AccountConfig')
             return False
-        if config.user_id.decode() != name.split('/')[-1]:
-            logging.error(f'File {name}@account.tlv is not of type AccountConfig')
+        expected_user = name.split('/')[-1]
+        if bytes(config.user_id).decode() != expected_user:
+            logging.error(f'File {name}@account.tlv does not belong to user {expected_user}')
             return False
         # TODO: Signer privilege; certificates are immutable
         return True
@@ -208,3 +221,16 @@ class RepoSyncPipeline:
     def check_change_meta_branch(self, name: str, commit: Commit) -> bool:
         # TODO: Check privilege; comments are immutable
         return True
+
+    def send_sync_update(self):
+        if not self.publish_update:
+            return
+        update = packet.SyncUpdate()
+        update.ref_into = []
+        heads = self.repo.get_ref_heads()
+        for ref, head in heads.items():
+            ref_info = packet.RefInfo()
+            ref_info.ref_name = ref.encode()
+            ref_info.ref_head = head
+            update.ref_into.append(ref_info)
+        self.publish_update(update.encode())

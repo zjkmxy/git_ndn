@@ -30,7 +30,7 @@ class GitRepo:
 
     def _get_repo(self) -> Repo:
         try:
-            return self.repos[self.repo_name]
+            return self.repos.repos[self.repo_name]
             # assert repo.bare
         except KeyError:
             raise KeyError(0, self.repo_name)  # Note: Use enum
@@ -75,7 +75,7 @@ class GitRepo:
         return istream.binsha
 
     def get_head(self, ref_name: str) -> bytes:
-        return self._get_ref(ref_name).binsha
+        return self._get_ref(ref_name).commit.binsha
 
     def set_head(self, ref_name: str, head: bytes) -> Reference:
         repo = self._get_repo()
@@ -108,3 +108,11 @@ class GitRepo:
 
     def get_commit(self, head: bytes) -> Commit:
         return Commit(self._get_repo(), head)
+
+    def get_ref_heads(self) -> typing.Dict[str, bytes]:
+        repo = self._get_repo()
+        ret = {
+            ref.path: ref.commit.binsha
+            for ref in repo.refs
+        }
+        return ret
