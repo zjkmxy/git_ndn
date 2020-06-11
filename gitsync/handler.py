@@ -48,7 +48,7 @@ class Handler:
                 data_content = b'SUCCEEDED' if ret else b'FAILED'
             except aio.TimeoutError:
                 data_content = b'PENDING'
-            self.app.put_data(name, data_content)
+            self.app.put_data(name, data_content, freshness_period=1000)
         aio.create_task(send_response())
 
     async def process_push(self, ref_name: str, ref_head: bytes, force: bool) -> bool:

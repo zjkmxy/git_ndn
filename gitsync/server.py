@@ -52,8 +52,9 @@ class Server:
 
     def create_project(self, name: FormalName, _param: InterestParam, app_param: typing.Optional[BinaryStr]):
         repo_name = bytes(app_param).decode()
+        logging.info(f'Create repo: {repo_name} ...')
         ret = self.git_repos.create_repo(repo_name)
         if ret:
             self.repos[repo_name] = self.init_repo_pipelines(repo_name)
         data_content = b'SUCCEEDED' if ret else b'FAILED'
-        self.app.put_data(name, data_content)
+        self.app.put_data(name, data_content, freshness_period=1000)

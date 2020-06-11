@@ -19,3 +19,5 @@ python_version = "3.8"
 [scripts]
 tlv_to_json = "python bin/tlv_to_json.py"
 encode_json = "python bin/encode_json.py"
+gitsync_daemon = "python bin/gitsync_daemon.py"
+gitsync = "python bin/gitsync.py"
