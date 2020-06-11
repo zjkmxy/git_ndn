@@ -1,6 +1,7 @@
 import os
 import typing
 import logging
+import hashlib
 import asyncio as aio
 from ndn.app import NDNApp
 from ndn.encoding import Name, Component, FormalName, InterestParam, BinaryStr
@@ -19,15 +20,16 @@ class ObjectFetcher:
         self.repo = repo
         self.prefix = Name.from_str(os.getenv("GIT_NDN_PREFIX") + f'/project/{repo.repo_name}/objects')
         aio.create_task(self.app.register(self.prefix, self.on_interest))
+        self.incomplete_list = {}
 
     def close(self):
         self.app.unregister(self.prefix)
 
     async def fetch(self, obj_type: str, obj_name: bytes):
         # Return if it exists
-        if self.repo.has_obj(obj_name):
+        if self.repo.has_obj(obj_name) and obj_name not in self.incomplete_list:
             return False
-        # TODO: If the fetch fails, mark those objects
+        self.incomplete_list[obj_name] = obj_type
         # Fetch object
         packet_name = self.prefix + [Component.from_bytes(obj_name)]
         wire = b''.join([bytes(seg) async for seg in segment_fetcher(self.app, packet_name, must_be_fresh=False)])
@@ -36,7 +38,11 @@ class ObjectFetcher:
         # Check type
         if obj_type and obj_type != fetched_obj_type:
             raise ValueError(f'{obj_type} is expected but get {fetched_obj_type}')
-        # Write into repo TODO: Check name
+        # Write into repo TODO: Transfer compressed data
+        h = hashlib.sha1(obj_type.encode() + b' ' + f'{len(pack.obj_data)}'.encode() + b'\x00')
+        h.update(pack.obj_data)
+        if h.digest() != obj_name:
+            raise ValueError(f'{obj_name} has a different digest')
         self.repo.store_obj(bytes(pack.obj_type), bytes(pack.obj_data))
         # Trigger recurisve fetching
         if obj_type == "commit":
@@ -45,6 +51,7 @@ class ObjectFetcher:
             await self.traverse_tree(bytes(pack.obj_data))
         elif obj_type != "blob":
             raise ValueError(f'Unknown data type {obj_type}')
+        del self.incomplete_list[obj_name]
 
     async def traverse_commit(self, content: bytes):
         lines = content.decode("utf-8").split("\n")

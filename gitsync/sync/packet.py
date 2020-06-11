@@ -13,3 +13,8 @@ class RefInfo(enc.TlvModel):
 
 class SyncUpdate(enc.TlvModel):
     ref_into = enc.RepeatedField(enc.ModelField(0x05, RefInfo))
+
+
+class PushRequest(enc.TlvModel):
+    ret_info = enc.ModelField(0x05, RefInfo)
+    force = enc.BoolField(0x06)

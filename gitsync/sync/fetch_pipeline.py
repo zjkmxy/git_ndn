@@ -21,7 +21,7 @@ class RepoSyncPipeline:
         self.updated = False
         self.in_process = False
 
-    def on_update(self, data: enc.BinaryStr):
+    def on_update(self, data: enc.BinaryStr, respond_to: typ.Optional[bytes]):
         try:
             update = packet.SyncUpdate.parse(data)
         except (enc.DecodeError, IndexError) as e:
@@ -32,11 +32,15 @@ class RepoSyncPipeline:
             for ref_info in update.ref_into
         }
         logging.debug(f'On Sync Update {ref_updates}')
+        # To avoid conflict, we can ignore other incoming Sync updates when we are handling one
+        # This is safe because we will send a Sync update after it
+        # which will trigger other nodes send back the updates we are missing
+        # A better way is to create a queue, but I don't have time to handle this corner case
         if not self.in_process:
             self.in_process = True
-            aio.create_task(self.after_update(ref_updates))
+            aio.create_task(self.after_update(ref_updates, respond_to))
 
-    async def after_update(self, ref_updates: typ.Dict[str, bytes]):
+    async def after_update(self, ref_updates: typ.Dict[str, bytes], respond_to: typ.Optional[bytes]):
         self.updated = False
         # TODO: Handle refs/changes-hash
         for name, head in ref_updates.items():
@@ -55,8 +59,10 @@ class RepoSyncPipeline:
                 ret = await self.merge_update(name, head)
             # TODO: If this is bmeta, reset refs/head/*
         # Set Sync update
-        if self.updated:
-            self.send_sync_update()
+        # It may bounce back and forth if there is an unresolvable conflict
+        # But currently we cannot detect whether it's another node who disagrees with us
+        # or it's bouncing back and forth.
+        self.send_sync_update(respond_to)
         self.in_process = False
 
     async def linear_update(self, name: str, new_head: bytes) -> bool:
@@ -231,7 +237,7 @@ class RepoSyncPipeline:
         # TODO: Check privilege; comments are immutable
         return True
 
-    def send_sync_update(self):
+    def send_sync_update(self, respond_to: typ.Optional[bytes] = None):
         if not self.publish_update:
             return
         update = packet.SyncUpdate()
@@ -242,4 +248,4 @@ class RepoSyncPipeline:
             ref_info.ref_name = ref.encode()
             ref_info.ref_head = head
             update.ref_into.append(ref_info)
-        self.publish_update(update.encode())
+        self.publish_update(update.encode(), respond_to)

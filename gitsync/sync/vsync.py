@@ -1,31 +1,36 @@
 import asyncio as aio
-import json
 import logging
+import hashlib
 from ndn.app import NDNApp
-from ndn.encoding import Name, Component, BinaryStr, FormalName
-from ndn.name_tree import NameTrie
+from ndn.encoding import BinaryStr, FormalName
 from ndn.types import InterestNack, InterestTimeout
-import pickle
 import typing
-from typing import List, Optional
+from typing import Optional
 
 
 class VSync:
-    OnUpdateFunc = typing.Callable[[BinaryStr], None]
+    OnUpdateFunc = typing.Callable[[BinaryStr, Optional[bytes]], None]
 
-    def __init__(self, app: NDNApp, on_update, prefix: FormalName, interval: int):
+    def __init__(self, app: NDNApp, on_update: OnUpdateFunc, prefix: FormalName, interval: int):
         self.app = app
         self.on_update = on_update
         self.prefix = prefix
         self.interval = interval
         self.content_latest = None
+        self.bouncing_updates = set()
         # listen for sync interests
         self.app.route(self.prefix)(self._on_sync_interest)
         # start retx sync interests
         aio.ensure_future(self._retx_sync_interest())
 
-    def publish_update(self, content: BinaryStr):
-        self.content_latest = content
+    def publish_update(self, content: BinaryStr, respond_to: Optional[bytes] = None):
+        if self.content_latest != content:
+            self.content_latest = content
+            self.bouncing_updates.clear()
+        if respond_to is not None:
+            if respond_to in self.bouncing_updates:
+                return
+            self.bouncing_updates.add(respond_to)
         # state change triggers sending sync interest
         aio.ensure_future(self._send_sync_interest())
 
@@ -46,7 +51,8 @@ class VSync:
             logging.warning(f'Data interest nacked with reason={e.reason}')
             return
     
-    def _on_sync_interest(self, int_name, _int_param, _app_param):
+    def _on_sync_interest(self, _int_name, _int_param, app_param):
         # do not update state, because not sure which one is newer
-        if _app_param != self.content_latest:
-            self.on_update(_app_param)
+        if app_param != self.content_latest:
+            content_hash = hashlib.sha256(app_param).digest()
+            self.on_update(app_param, content_hash)

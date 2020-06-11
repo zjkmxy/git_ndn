@@ -9,18 +9,30 @@ class GitRepos:
     base_dir: str
     repos: typing.Dict[str, Repo]  # Note: memory leak, refer to doc
 
-    def __init__(self, base_dir: str):
+    def __init__(self, base_dir: str, bootstrap: bool = False):
         self.base_dir = base_dir
-        self.repos = {
-            f: Repo(os.path.join(base_dir, f))
-            for f in os.listdir(base_dir)
-            if os.path.isdir(os.path.join(base_dir, f))
-        }
+        if bootstrap:
+            self.repos = {
+                f: Repo.init(os.path.join(base_dir, f), bare=True)
+                for f in ['All-Users.git', 'All-Projects.git']
+            }
+        else:
+            self.repos = {
+                f: Repo(os.path.join(base_dir, f))
+                for f in os.listdir(base_dir)
+                if os.path.isdir(os.path.join(base_dir, f))
+            }
 
     def __getitem__(self, item):
         if item not in self.repos:
             raise KeyError(0, item)
         return GitRepo(self, item)
+
+    def create_repo(self, name: str) -> bool:
+        # TODO: Check name validity
+        if name in self.repos:
+            return False
+        self.repos[name] = Repo.init(os.path.join(self.base_dir, name), bare=True)
 
 
 class GitRepo:
