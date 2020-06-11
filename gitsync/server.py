@@ -10,6 +10,7 @@ from .account.account import Accounts
 from .sync.fetch_queue import ObjectFetcher
 from .sync.fetch_pipeline import RepoSyncPipeline
 from .sync.vsync import VSync
+from .handler import Handler
 
 
 class Server:
@@ -18,6 +19,7 @@ class Server:
         vsync: VSync
         fetcher: ObjectFetcher
         pipeline: RepoSyncPipeline
+        handler: Handler
 
     def __init__(self, app: NDNApp):
         self.app = app
@@ -41,14 +43,16 @@ class Server:
             repo.pipeline.send_sync_update()
 
     def init_repo_pipelines(self, name: str):
-        fetcher = ObjectFetcher(self.app, self.git_repos[name])
+        objects_prefix = Name.from_str(os.getenv("GIT_NDN_PREFIX") + f'/project/{name}/objects')
+        fetcher = ObjectFetcher(self.app, self.git_repos[name], objects_prefix)
         pipeline = RepoSyncPipeline(fetcher, self.git_repos[name], self.accounts)
-        prefix = Name.from_str(os.getenv("GIT_NDN_PREFIX") + f'/project/{name}/sync')
+        sync_prefix = Name.from_str(os.getenv("GIT_NDN_PREFIX") + f'/project/{name}/sync')
         # TODO: Parse the config and change to real time
-        vsync = VSync(self.app, pipeline.on_update, prefix, 10)
+        vsync = VSync(self.app, pipeline.on_update, sync_prefix, 10)
         pipeline.publish_update = vsync.publish_update
         logging.info(f'Start sync on repo: {name}')
-        return Server.Repo(vsync, fetcher, pipeline)
+        handler = Handler(self.app, self.git_repos[name], pipeline)
+        return Server.Repo(vsync, fetcher, pipeline, handler)
 
     def create_project(self, name: FormalName, _param: InterestParam, app_param: typing.Optional[BinaryStr]):
         repo_name = bytes(app_param).decode()

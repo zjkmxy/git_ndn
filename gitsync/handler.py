@@ -17,14 +17,14 @@ class Handler:
         self.repo = repo
         self.pipeline = pipeline
         self.prefix = Name.from_str(os.getenv("GIT_NDN_PREFIX") + f'/project/{repo.repo_name}')
-        aio.create_task(self.app.register(self.prefix + [Component.from_str('refs_list')], self.refs_list))
+        aio.create_task(self.app.register(self.prefix + [Component.from_str('ref-list')], self.ref_list))
         aio.create_task(self.app.register(self.prefix + [Component.from_str('push')], self.push))
 
-    def refs_list(self, name: FormalName, _param: InterestParam, _app_param: typing.Optional[BinaryStr]):
+    def ref_list(self, name: FormalName, _param: InterestParam, _app_param: typing.Optional[BinaryStr]):
         ref_heads = self.repo.get_ref_heads()
         result = '\n'.join(f'{head.hex()} {ref}' for ref, head in ref_heads.items())
         result += '\n'
-        logging.debug(f'On refs_list: {repr(result)}')
+        logging.debug(f'On ref-list: {repr(result)}')
 
         data_name = name + [Component.from_timestamp(timestamp())]
         self.app.put_data(data_name, result.encode(), freshness_period=1000)
@@ -64,5 +64,5 @@ class Handler:
         if force:
             self.repo.set_head(ref_name, ref_head)
         else:
-            await self.pipeline.after_update({ref_name: ref_head})
+            await self.pipeline.after_update({ref_name: ref_head}, None)
         return True

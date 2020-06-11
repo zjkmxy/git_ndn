@@ -45,6 +45,8 @@ async def main():
     cmd = sys.argv[1]
     try:
         await handlers[cmd](prefix, sys.argv[2:])
+    except KeyError:
+        print('Supported commands: create-repo')
     finally:
         app.shutdown()
 

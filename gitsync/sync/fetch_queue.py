@@ -1,13 +1,11 @@
-import os
 import typing
 import logging
 import hashlib
 import asyncio as aio
 from ndn.app import NDNApp
-from ndn.encoding import Name, Component, FormalName, InterestParam, BinaryStr
+from ndn.encoding import Component, FormalName, InterestParam, BinaryStr
 from ndn.app_support.segment_fetcher import segment_fetcher
 from .packet import SyncObject
-from .. import repos
 
 
 HASH_LENGTH = 20
@@ -15,10 +13,10 @@ SEGMENTATION_SIZE = 4000
 
 
 class ObjectFetcher:
-    def __init__(self, app: NDNApp, repo: repos.GitRepo):
+    def __init__(self, app: NDNApp, repo, prefix: FormalName):
         self.app = app
         self.repo = repo
-        self.prefix = Name.from_str(os.getenv("GIT_NDN_PREFIX") + f'/project/{repo.repo_name}/objects')
+        self.prefix = prefix
         aio.create_task(self.app.register(self.prefix, self.on_interest))
         self.incomplete_list = {}
 
@@ -103,4 +101,4 @@ class ObjectFetcher:
         self.app.put_data(data_name, wire,
                           freshness_period=3600000,
                           final_block_id=Component.from_segment(final_block))
-        logging.info(f'Responded {obj_name} segment {final_block} in repo {self.repo.repo_name}')
+        logging.debug(f'Responded {obj_name} segment {final_block} in repo {self.repo.repo_name}')
