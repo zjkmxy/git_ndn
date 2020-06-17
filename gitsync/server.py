@@ -10,6 +10,7 @@ from .account.account import Accounts
 from .sync.fetch_queue import ObjectFetcher
 from .sync.fetch_pipeline import RepoSyncPipeline
 from .sync.vsync import VSync
+from .sync import packet
 from .handler import Handler
 
 
@@ -39,6 +40,8 @@ class Server:
 
     async def start(self):
         await self.app.register(os.getenv("GIT_NDN_PREFIX") + '/create-project', self.create_project)
+        await self.app.register(os.getenv("GIT_NDN_PREFIX") + '/init-server', self.init_server)
+        await self.app.register(os.getenv("GIT_NDN_PREFIX") + '/add-user', self.add_user)
         for _, repo in self.repos.items():
             repo.pipeline.send_sync_update()
 
@@ -62,3 +65,21 @@ class Server:
             self.repos[repo_name] = self.init_repo_pipelines(repo_name)
         data_content = b'SUCCEEDED' if ret else b'FAILED'
         self.app.put_data(name, data_content, freshness_period=1000)
+
+    def init_server(self, name: FormalName, _param: InterestParam, _app_param: typing.Optional[BinaryStr]):
+        ret = self.git_repos.init_server(self.signer)
+        data_content = b'SUCCEEDED' if ret else b'FAILED'
+        self.app.put_data(name, data_content, freshness_period=10000)
+
+    def add_user(self, name: FormalName, _param: InterestParam, app_param: typing.Optional[BinaryStr]):
+        try:
+            req = packet.AddUserReq.parse(app_param)
+        except IndexError:
+            logging.warning(f'Invalid add user request {Name.to_str(name)}')
+            return
+        if not req.cert:
+            logging.warning(f'Invalid add user request {Name.to_str(name)}')
+            return
+        ret = self.git_repos.add_account(self.signer, req.cert, req.email, req.full_name)
+        data_content = b'SUCCEEDED' if ret else b'FAILED'
+        self.app.put_data(name, data_content, freshness_period=10000)

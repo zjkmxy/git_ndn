@@ -18,3 +18,9 @@ class SyncUpdate(enc.TlvModel):
 class PushRequest(enc.TlvModel):
     ret_info = enc.ModelField(0x05, RefInfo)
     force = enc.BoolField(0x06)
+
+
+class AddUserReq(enc.TlvModel):
+    full_name = enc.BytesField(0x07)
+    email = enc.BytesField(0x08)
+    cert = enc.BytesField(0x09)
