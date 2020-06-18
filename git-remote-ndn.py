@@ -169,7 +169,7 @@ async def after_start(app: NDNApp, repo_prefix: str, repo_name: str, git_repo: G
                     running = False
                     return
             except (InterestCanceled, InterestTimeout, InterestNack, ValidationFailure) as e:
-                print_out(f"ERROR cannot send push interest {ref_name}->{commit}")
+                print_out(f"ERROR cannot send push interest {ref_name}->{commit}  {type(e)} {e}")
                 print(f"error {ref_name} DISCONNECTED")
             # Batched commands
             cmd = sys.stdin.readline().rstrip("\n\r")

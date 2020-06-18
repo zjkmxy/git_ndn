@@ -35,6 +35,7 @@ class GitRepos:
         if name in self.repos:
             return False
         self.repos[name] = Repo.init(os.path.join(self.base_dir, name), bare=True)
+        return True
 
     def init_server(self, signer) -> bool:
         if self.repos['All-Users.git'].refs or self.repos['All-Projects.git'].refs:
@@ -72,12 +73,18 @@ class GitRepos:
         self.add_account(signer, trust_anchor, None, None)
         return True
 
-    def add_account(self, signer, cert: bytes, email: typing.Optional[str], full_name: typing.Optional[str]):
+    def add_account(self, signer, cert: bytes, email: typing.Optional[str], full_name: typing.Optional[str]) -> bool:
         repo = self['All-Users.git']
         # Read the cert
         ta_name, _, _, _ = enc.parse_data(cert, with_tl=True)
         user_name = bytes(enc.Component.get_value(ta_name[-5])).decode()
         key_name = bytes(enc.Component.get_value(ta_name[-3])).hex()
+        # Test if user exists
+        try:
+            repo.get_head(f'refs/users/{user_name[:2]}/{user_name}')
+            return False
+        except (KeyError, ValueError):
+            pass
         # All-Users.git@refs/users/ad/admin:account.tlv+KEY
         account = proto.AccountConfig()
         account.user_id = user_name.encode()
@@ -92,6 +99,7 @@ class GitRepos:
         }
         commit = repo.create_init_commit(tree)
         repo.set_head(f'refs/users/{user_name[:2]}/{user_name}', commit)
+        return True
 
 
 class GitRepo:

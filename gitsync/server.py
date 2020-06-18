@@ -70,6 +70,8 @@ class Server:
         ret = self.git_repos.init_server(self.signer)
         data_content = b'SUCCEEDED' if ret else b'FAILED'
         self.app.put_data(name, data_content, freshness_period=10000)
+        self.repos['All-Projects.git'].pipeline.send_sync_update(None)
+        self.repos['All-Users.git'].pipeline.send_sync_update(None)
 
     def add_user(self, name: FormalName, _param: InterestParam, app_param: typing.Optional[BinaryStr]):
         try:
@@ -80,6 +82,9 @@ class Server:
         if not req.cert:
             logging.warning(f'Invalid add user request {Name.to_str(name)}')
             return
-        ret = self.git_repos.add_account(self.signer, req.cert, req.email, req.full_name)
+        email = bytes(req.email).decode() if req.email else None
+        full_name = bytes(req.full_name).decode() if req.full_name else None
+        ret = self.git_repos.add_account(self.signer, bytes(req.cert), email, full_name)
         data_content = b'SUCCEEDED' if ret else b'FAILED'
         self.app.put_data(name, data_content, freshness_period=10000)
+        self.repos['All-Users.git'].pipeline.send_sync_update(None)

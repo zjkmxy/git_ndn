@@ -67,8 +67,8 @@ async def add_user(prefix, args):
     with open(args[0], 'rb') as f:
         cert = f.read()
     req = packet.AddUserReq()
-    req.email = args[1] if len(args) >= 2 else None
-    req.full_name = args[2] if len(args) >= 2 else None
+    req.email = args[1].encode() if len(args) >= 2 else None
+    req.full_name = args[2].encode() if len(args) >= 2 else None
     req.cert = cert
     try:
         _, _, ret = await app.express_interest(
