@@ -9,34 +9,39 @@ class Merger:
     def __init__(self, repo: GitRepo):
         self.repo = repo
 
-    def merge_step(self, base_sha: bytes, ori_sha: bytes, new_sha: bytes) -> bytes:
+    def merge_step(self, base_sha: typing.Optional[bytes], ori_sha: bytes, new_sha: bytes) -> bytes:
         # If only one side changes it, pick that one
         if ori_sha == new_sha:
+            return ori_sha
+        elif base_sha is not None:
             if ori_sha == base_sha:
                 return new_sha
-            else:
+            elif new_sha == base_sha:
                 return ori_sha
         # Otherwise, this must be a tree (because file merge is not supported yet)
-        base_type, base_tree = self.repo.read_obj(base_sha)
         ori_type, ori_tree = self.repo.read_obj(ori_sha)
         new_type, new_tree = self.repo.read_obj(new_sha)
-        if any(True for t in [base_type, ori_type, new_type] if t != 'tree'):
+        if any(True for t in [ori_type, new_type] if t != 'tree'):
             raise ValueError('Merge conflict')
-        base_dict = self.parse_tree(base_tree)
+        if base_sha:
+            _, base_tree = self.repo.read_obj(base_sha)
+            base_dict = self.parse_tree(base_tree)
+        else:
+            base_dict = {}
         ori_dict = self.parse_tree(ori_tree)
         new_dict = self.parse_tree(new_tree)
         # We may assume that either original or new agrees with base on any file
         # Recursively merge
         ret_dict = {}
-        for bname, (btype, bsha) in base_dict.items():
-            if bname not in ori_dict or bname not in new_dict:
-                raise ValueError('Merge conflict')
+        common_items = ori_dict.keys() & new_dict.keys()
+        for bname in common_items:
             otype, osha = ori_dict[bname]
             ntype, nsha = new_dict[bname]
-            if otype != btype or ntype != btype:
+            if otype != ntype:
                 raise ValueError('Merge conflict')
-            ret_dict[bname] = (btype, self.merge_step(bsha, osha, nsha))
-        # Add new files
+            bsha = base_dict[bname] if bname in base_dict else None
+            ret_dict[bname] = (otype, self.merge_step(bsha, osha, nsha))
+        # Add new files (Note: deletion is noe supported here)
         for oname, (otype, osha) in ori_dict.items():
             if oname not in ret_dict:
                 ret_dict[oname] = (otype, osha)
