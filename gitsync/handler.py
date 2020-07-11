@@ -9,6 +9,7 @@ from ndn.utils import timestamp
 from .sync import packet
 from .sync.fetch_pipeline import RepoSyncPipeline
 from . import repos
+from .db import proto
 
 
 class Handler:
@@ -54,15 +55,28 @@ class Handler:
     async def process_push(self, ref_name: str, ref_head: bytes, force: bool) -> bool:
         # TODO: Virtual branch refs/for/XXX
         # TODO: Avoid conflict -> cancel pipeline
-        # Fetch local objects
+        
+        # Convert refs/head/* to refs/bmeta/*
+        def bmeta_name_of_branch(ref_name):
+            ref_name = ref_name.split('/')
+            ref_name[1] = 'bmeta'
+            return '/'.join(ref_name)
+
+        # Make a commit on the corresponding bmeta branch
+        # TODO: add change_id and change_id_meta_commit to headref 
+        headref = proto.HeadRef()
+        headref.head = ref_head
+        tree = {
+            'head.tlv': proto.encode(headref)
+        }
         try:
-            await self.pipeline.fetcher.fetch('commit', ref_head)
-        except (ValueError, InterestCanceled, InterestTimeout, InterestNack) as e:
-            logging.warning(f'Fetching error - {type(e)} {e}')
-            return False
-        # Force update
-        if force:
-            self.repo.set_head(ref_name, ref_head)
-        else:
-            await self.pipeline.after_update({ref_name: ref_head}, None)
+            ori_commit = self.repo.get_head(ref_name)
+        except KeyError:
+            ori_commit = None
+        new_commit = self.repo.create_linear_commit(tree, ori_commit)
+        bmeta_branch_name = bmeta_name_of_branch(ref_name)
+        
+        # Assume bmeta branch has no conflict, set HEAD directly
+        self.repo.set_head(bmeta_branch_name, new_commit)
+        await self.pipeline.after_bmeta_commit({bmeta_branch_name: new_commit}, force)
         return True

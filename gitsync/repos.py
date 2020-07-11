@@ -196,7 +196,8 @@ class GitRepo:
         }
         return ret
 
-    def create_init_commit(self, tree: typing.Dict[str, typing.Union[typing.Dict, bytes]]) -> bytes:
+    def create_linear_commit(self, tree: typing.Dict[str, typing.Union[typing.Dict, bytes]],
+                      parent_binsha: typing.Optional[bytes]) -> bytes:
         def generate_tree(data) -> typing.Tuple[bytes, bytes]:
             if isinstance(data, bytes):
                 # Is file content
@@ -220,6 +221,11 @@ class GitRepo:
         _, tree_sha = generate_tree(tree)
         ret = ''
         ret += f'tree {tree_sha.hex()}\n'
+        if parent_binsha:
+            ret += f'parent {parent_binsha.hex()}\n'
         ret += f'\n'
         ret += 'Initial commit\n'
         return self.store_obj(b'commit', ret.encode())
+    
+    def create_init_commit(self, tree: typing.Dict[str, typing.Union[typing.Dict, bytes]]) -> bytes:
+        return self.create_linear_commit(tree, None)
