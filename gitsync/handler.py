@@ -78,5 +78,5 @@ class Handler:
         
         # Assume bmeta branch has no conflict, set HEAD directly
         self.repo.set_head(bmeta_branch_name, new_commit)
-        await self.pipeline.after_bmeta_commit({bmeta_branch_name: new_commit})
+        await self.pipeline.after_bmeta_commit({bmeta_branch_name: new_commit}, force)
         return True
