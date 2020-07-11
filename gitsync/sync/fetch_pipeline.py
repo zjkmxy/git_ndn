@@ -39,6 +39,37 @@ class RepoSyncPipeline:
         if not self.in_process:
             self.in_process = True
             aio.create_task(self.after_update(ref_updates, respond_to))
+    
+    async def after_bmeta_commit(self, ref_updates: typ.Dict[str, bytes], force: bool=False):
+        # Convert refs/bmeta/* to refs/head/*
+        def head_name_of_bmeta(ref_name):
+            ref_name = ref_name.split('/')
+            ref_name[1] = 'head'
+            return '/'.join(ref_name)
+            
+        for name, head in ref_updates.items():
+            # Extract HEAD from HeadRef
+            wire = self.repo.get_commit(head).tree['head.tlv'].data_stream.read()
+            headref, _ = proto.parse(wire)
+            if not isinstance(headref, proto.HeadRef):
+                logging.error(f'File head.tlv is not of type HeadRef')
+                continue
+            head = headref.head
+
+            # Fetch local or remote objects from HEAD
+            try:
+                await self.fetcher.fetch('commit', head)
+            except (ValueError, InterestCanceled, InterestTimeout, InterestNack) as e:
+                logging.warning(f'Fetching error - {type(e)} {e}')
+                continue
+
+            # Force set head or automatic merge
+            head_ref_name = head_name_of_bmeta(name)
+            if force:
+                self.repo.set_head(head_ref_name, head)
+            else:
+                await self.after_update({head_ref_name: head}, None)
+
 
     async def after_update(self, ref_updates: typ.Dict[str, bytes], respond_to: typ.Optional[bytes]):
         self.updated = False
@@ -50,8 +81,11 @@ class RepoSyncPipeline:
             except (ValueError, InterestCanceled, InterestTimeout, InterestNack) as e:
                 logging.warning(f'Fetching error - {type(e)} {e}')
                 continue
-            # TODO: If this is bmeta, fetch refs/head/*
-            pass
+            # If bmeta branch, assume no conflict, set HEAD directly
+            if name.startswith('refs/bmeta/'):
+                self.repo.set_head(name, head)
+                await self.after_bmeta_commit({name: head})
+                continue
             # Linear update: compare history
             ret = await self.linear_update(name, head)
             # Merge update: for append-only branches
@@ -243,7 +277,12 @@ class RepoSyncPipeline:
         update = packet.SyncUpdate()
         update.ref_into = []
         heads = self.repo.get_ref_heads()
+
+        refs_to_sync_prefix = ('refs/meta/', 'refs/bmeta/', 'refs/projects/catalog', 'refs/changes-hash')
         for ref, head in heads.items():
+            # Only advertise refs starting with any element in this list
+            if not ref.startswith(refs_to_sync_prefix):
+                continue
             ref_info = packet.RefInfo()
             ref_info.ref_name = ref.encode()
             ref_info.ref_head = head
